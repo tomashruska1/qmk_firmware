@@ -3,9 +3,7 @@
 #define KEYSTROKE_TIMER 5000
 #define CAPS_LOCK_TIMER 500
 #define SWITCH_TIMER 175
-// #define BASE_LAYER_QWERTY 1
-// #define BASE_LAYER_COLEMAK 0
-#define TOP_LAYER 4
+#define TOP_LAYER 3
 
 #define DEFAULT_RGB_SPEED 100
 
@@ -39,7 +37,14 @@
 #define M_RGHT ALT_T(KC_RGHT)
 
 #define LAYER_BASED_BACKLIGHT
-// #define COLEMAK
+// #define DYNAMIC_BASE_LAYER
+
+#ifdef DYNAMIC_BASE_LAYER
+    #define BASE_LAYER_QWERTY 1
+    #define BASE_LAYER_COLEMAK 0
+#else
+    // #define COLEMAK
+#endif
 
 enum new_keycodes
 {

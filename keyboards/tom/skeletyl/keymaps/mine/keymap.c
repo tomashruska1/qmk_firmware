@@ -3,7 +3,9 @@
 #include "print.h"
 #include "keymap.h"
 
+#ifdef DYNAMIC_BASE_LAYER
 layer_state_t active_base_layer      = BASE_LAYER_COLEMAK;
+#endif
 bool          one_shot_layer_active  = false;
 bool          permanent_layer_active = false;
 bool          caps_lock_active       = false;
@@ -11,8 +13,12 @@ bool          caps_lock_pressed      = false;
 uint32_t      timers[9]              = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 #ifdef LAYER_BASED_BACKLIGHT
+#ifdef DYNAMIC_BASE_LAYER
 uint8_t layer_colors[4][3] = {{HSV_AZURE}, {HSV_GREEN}, {HSV_PURPLE}, {HSV_TEAL}};
-#endif
+#else
+uint8_t layer_colors[3][3] = {{HSV_GREEN}, {HSV_PURPLE}, {HSV_TEAL}};
+#endif // DYNAMIC_BASE_LAYER
+#endif // LAYER_BASED_BACKLIGHT
 
 uint8_t lalt_mod_bit = MOD_BIT(KC_LALT);
 
@@ -80,14 +86,18 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
 
 void set_base_layer_rgb(void) {
 #ifdef LAYER_BASED_BACKLIGHT
-    // if (active_base_layer == BASE_LAYER_QWERTY) {
+#ifdef DYNAMIC_BASE_LAYER
+    if (active_base_layer == BASE_LAYER_QWERTY) {
         print("current layer is qwerty, will cycle spiral\n");
+#endif // DYNAMIC_BASE_LAYER
         rgb_matrix_mode(RGB_MATRIX_CYCLE_SPIRAL);
+#ifdef DYNAMIC_BASE_LAYER
         return;
-    // }
-    // print("current layer is colemak, will cycle left to right\n");
-    // rgb_matrix_mode(RGB_MATRIX_CYCLE_LEFT_RIGHT);
-#endif
+    }
+    print("current layer is colemak, will cycle left to right\n");
+    rgb_matrix_mode(RGB_MATRIX_CYCLE_LEFT_RIGHT);
+#endif // DYNAMIC_BASE_LAYER
+#endif // LAYER_BASED_BACKLIGHT
 }
 
 void reset(void) {
@@ -102,8 +112,11 @@ void housekeeping_task_user(void) {
         return;
     }
 
-    // if (one_shot_layer_active || (get_highest_layer(layer_state) != BASE_LAYER_QWERTY && get_highest_layer(layer_state) != BASE_LAYER_COLEMAK)) {
+#ifdef DYNAMIC_BASE_LAYER
+    if (one_shot_layer_active || (get_highest_layer(layer_state) != BASE_LAYER_QWERTY && get_highest_layer(layer_state) != BASE_LAYER_COLEMAK)) {
+#else
     if (one_shot_layer_active || get_highest_layer(layer_state) > 0) {
+#endif
         if (last_input_activity_elapsed() > KEYSTROKE_TIMER) {
             print("housekeeping task: reset\n");
             reset();
@@ -216,11 +229,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
+#ifdef DYNAMIC_BASE_LAYER
 void update_default_layer(layer_state_t default_layer) {
     default_layer_set(default_layer + 1);
     active_base_layer = default_layer;
     set_base_layer_rgb();
 }
+#endif
 
 bool process_layer_switch(uint16_t keycode, keyrecord_t *record, uint8_t current_layer) {
     uprintf("current layer: %d\n", current_layer);
@@ -231,25 +246,27 @@ bool process_layer_switch(uint16_t keycode, keyrecord_t *record, uint8_t current
         return false;
     }
 
-    // if (current_layer == BASE_LAYER_COLEMAK) {
-    //     current_layer = BASE_LAYER_QWERTY;
-    // }
+#ifdef DYNAMIC_BASE_LAYER
+    if (current_layer == BASE_LAYER_COLEMAK) {
+        current_layer = BASE_LAYER_QWERTY;
+    }
 
     uint8_t active_mods = get_mods();
 
-    // if (active_mods & MOD_BIT(KC_RGUI)) {
-    //     print("setting layer 1 as default layer\n");
-    //     update_default_layer(BASE_LAYER_QWERTY);
-    //     layer_clear();
-    //     return false;
-    // }
+    if (active_mods & MOD_BIT(KC_RGUI)) {
+        print("setting layer 1 as default layer\n");
+        update_default_layer(BASE_LAYER_QWERTY);
+        layer_clear();
+        return false;
+    }
 
-    // if (active_mods & MOD_BIT(KC_LGUI)) {
-    //     print("setting layer 0 as default layer\n");
-    //     update_default_layer(BASE_LAYER_COLEMAK);
-    //     layer_clear();
-    //     return false;
-    // }
+    if (active_mods & MOD_BIT(KC_LGUI)) {
+        print("setting layer 0 as default layer\n");
+        update_default_layer(BASE_LAYER_COLEMAK);
+        layer_clear();
+        return false;
+    }
+#endif
 
     uint32_t *switch_timer = get_timer(keycode);
 
@@ -363,36 +380,43 @@ void deactivate_caps_lock() {
     tap_code(KC_CAPS);
 }
 
+#define COLEMAK_KEYMAP LAYOUT_split_3x5_3( \
+    KC_Q,    KC_W,    KC_F,    KC_P,    KC_B,                               KC_J,    KC_L,    KC_U,    KC_Y,    KC_SCLN, \
+    MC_A,    MC_R,    MC_S,    MC_T,    KC_G,                               KC_M,    MC_N,    MC_E,    MC_I,    MC_O, \
+    KC_SLSH, KC_Z,    KC_X,    KC_C,    KC_D,                               KC_V,    KC_K,    KC_H,    KC_COMM, KC_DOT, \
+                               KC_DEL,  KC_BSPC, KC_ESC,           KC_SPC,  KC_ENT,  LS \
+)
+
+#define QWERTY_KEYMAP LAYOUT_split_3x5_3( \
+    KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                               KC_Y,    KC_U,    KC_I,    KC_O,    KC_P, \
+    M_A,     M_S,     M_D,     M_F,     KC_G,                               KC_H,    M_J,     M_K,     M_L,     M_SCLN, \
+    KC_SLSH, KC_Z,    KC_X,    KC_C,    KC_V,                               KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT, \
+                               KC_DEL,  KC_BSPC, KC_ESC,           KC_SPC,  KC_ENT,  LS \
+)
+
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] =
 {
-#ifdef COLEMAK
-    [0] = LAYOUT_split_3x5_3(
-        KC_Q,    KC_W,    KC_F,    KC_P,    KC_B,                               KC_J,    KC_L,    KC_U,    KC_Y,    KC_SCLN,
-        MC_A,    MC_R,    MC_S,    MC_T,    KC_G,                               KC_M,    MC_N,    MC_E,    MC_I,    MC_O,
-        KC_SLSH, KC_Z,    KC_X,    KC_C,    KC_D,                               KC_V,    KC_K,    KC_H,    KC_COMM, KC_DOT,
-                                   KC_DEL,  KC_BSPC, KC_ESC,           KC_SPC,  KC_ENT,  LS
-    ),
+#ifdef DYNAMIC_BASE_LAYER
+    COLEMAK_KEYMAP,
+    QWERTY_KEYMAP,
+#elifdef COLEMAK
+    COLEMAK_KEYMAP,
 #else
-    [0] = LAYOUT_split_3x5_3(
-        KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                               KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,
-        M_A,     M_S,     M_D,     M_F,     KC_G,                               KC_H,    M_J,     M_K,     M_L,     M_SCLN,
-        KC_SLSH, KC_Z,    KC_X,    KC_C,    KC_V,                               KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,
-                                   KC_DEL,  KC_BSPC, KC_ESC,           KC_SPC,  KC_ENT,  LS
-    ),
+    QWERTY_KEYMAP,
 #endif
-    [1] = LAYOUT_split_3x5_3(
+    LAYOUT_split_3x5_3(
         KC_1,    KC_2,    KC_3,    KC_4,    KC_5,                               KC_6,    KC_7,    KC_8,    KC_9,    KC_0,
         M_GRV,   M_HOME,  M_END,   M_LBRC,  KC_RBRC,                            KC_LEFT, M_DOWN,  M_UP,    M_RGHT,  KC_TRNS,
         KC_NUBS, KC_TRNS, KC_TRNS, KC_PGUP, KC_PGDN,                            KC_MINS, KC_EQL,  KC_QUOT, KC_NUHS, KC_NUBS,
                                    KC_TRNS, KC_TRNS, LC,               KC_SPC,  KC_TRNS, LS
     ),
-    [2] = LAYOUT_split_3x5_3(
+    LAYOUT_split_3x5_3(
         KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,                              KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,
         KC_F1,   KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,                            KC_LEFT, M_DOWN,  M_UP,    M_RGHT,  KC_F12,
         KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,                            KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,
                                    KC_TRNS, KC_TRNS, LC,               KC_PSCR, KC_ENT,  LS
     ),
-    [3] = LAYOUT_split_3x5_3(
+    LAYOUT_split_3x5_3(
         KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,                            KC_P1,   KC_P2,   KC_P3,   KC_P0,   KC_TRNS,
         KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,                            KC_P4,   KC_P5,   KC_P6,   KC_COMM, KC_TRNS,
         KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS, KC_TRNS,                            KC_P7,   KC_P8,   KC_P9,   KC_TRNS, KC_TRNS,
