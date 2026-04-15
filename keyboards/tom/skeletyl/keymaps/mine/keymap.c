@@ -22,6 +22,15 @@ uint8_t layer_colors[3][3] = {{HSV_GREEN}, {HSV_PURPLE}, {HSV_TEAL}};
 
 uint8_t lalt_mod_bit = MOD_BIT(KC_LALT);
 
+void set_base_layer_rgb(void);
+
+
+void keyboard_post_init_user(void) {
+    rgb_matrix_set_speed(180);
+    set_base_layer_rgb();
+}
+
+
 uint32_t *get_timer(uint16_t keycode) {
     switch (keycode) {
         case LS:
@@ -61,6 +70,7 @@ uint32_t *get_timer(uint16_t keycode) {
     }
 }
 
+
 uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
     switch (keycode) {
         case M_D:
@@ -84,13 +94,19 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
     }
 }
 
+
 void set_base_layer_rgb(void) {
 #ifdef LAYER_BASED_BACKLIGHT
 #ifdef DYNAMIC_BASE_LAYER
     if (active_base_layer == BASE_LAYER_QWERTY) {
         print("current layer is qwerty, will cycle spiral\n");
 #endif // DYNAMIC_BASE_LAYER
+#ifdef RED_LIGHT_NO_SPIRAL
+        rgb_matrix_sethsv(HSV_RED);
+        rgb_matrix_mode(RGB_MATRIX_BREATHING);
+#else
         rgb_matrix_mode(RGB_MATRIX_CYCLE_SPIRAL);
+#endif
 #ifdef DYNAMIC_BASE_LAYER
         return;
     }
@@ -100,12 +116,14 @@ void set_base_layer_rgb(void) {
 #endif // LAYER_BASED_BACKLIGHT
 }
 
+
 void reset(void) {
     layer_clear();
     one_shot_layer_active  = false;
     permanent_layer_active = false;
     set_base_layer_rgb();
 }
+
 
 void housekeeping_task_user(void) {
     if (permanent_layer_active) {
@@ -125,6 +143,7 @@ void housekeeping_task_user(void) {
 }
 
 bool is_not_mod(uint16_t keycode, keyrecord_t *record) {
+
     switch (keycode) {
         case M_A:
         case M_S:
@@ -154,6 +173,7 @@ bool is_not_mod(uint16_t keycode, keyrecord_t *record) {
     }
 }
 
+
 void process_modifiers(uint16_t keycode, uint8_t mod_mask, bool right_alt) {
     // TODO: implement modifier suppression
     // probably has to be a block per modifier, then a block for the rest of the keys on a side
@@ -165,6 +185,7 @@ void process_modifiers(uint16_t keycode, uint8_t mod_mask, bool right_alt) {
     // more observation required
     uprintf("mod_mask: %d, keycode: %d\n", mod_mask, keycode);
 }
+
 
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static bool right_alt = false;
@@ -213,7 +234,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     uint8_t mod_mask = get_mods();
 
     if (keycode == KC_SPC && record->event.pressed && left_alt && (mod_mask & lalt_mod_bit) == lalt_mod_bit) {
-        print("tab shenanigans\n");
+        print("pressing tab under alt\n");
         if (!right_alt) {
             tap_code(KC_RCTL);
             del_mods(lalt_mod_bit);
@@ -229,6 +250,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     return true;
 }
 
+
 #ifdef DYNAMIC_BASE_LAYER
 void update_default_layer(layer_state_t default_layer) {
     default_layer_set(default_layer + 1);
@@ -237,9 +259,9 @@ void update_default_layer(layer_state_t default_layer) {
 }
 #endif
 
+
 bool process_layer_switch(uint16_t keycode, keyrecord_t *record, uint8_t current_layer) {
     uprintf("current layer: %d\n", current_layer);
-    // tap_code(KC_LCTL); // why am I pressing this?
 
     if (current_layer == TOP_LAYER) {
         print("current layer is top layer, will do nothing\n");
@@ -300,6 +322,7 @@ bool process_layer_switch(uint16_t keycode, keyrecord_t *record, uint8_t current
     return false;
 }
 
+
 bool is_shift(uint16_t keycode) {
     return keycode == M_D
         || keycode == M_K
@@ -308,6 +331,7 @@ bool is_shift(uint16_t keycode) {
         || keycode == MC_S
         || keycode == MC_E;
 }
+
 
 shift get_other_shift(uint16_t keycode) {
     uint32_t *other_shift_timer = NULL;
@@ -331,6 +355,7 @@ shift get_other_shift(uint16_t keycode) {
     shift sft = { other_shift_pressed, other_shift_timer };
     return sft;
 }
+
 
 bool should_activate_caps_lock(uint16_t keycode, keyrecord_t *record) {
     if (!is_shift(keycode) || caps_lock_pressed) {
@@ -360,6 +385,7 @@ bool should_activate_caps_lock(uint16_t keycode, keyrecord_t *record) {
     return (timer_read32() - *other_shift.timer) >= CAPS_LOCK_TIMER;
 }
 
+
 bool should_deactivate_caps_lock(uint16_t keycode, keyrecord_t *record) {
     return caps_lock_active
         && is_shift(keycode)
@@ -367,11 +393,13 @@ bool should_deactivate_caps_lock(uint16_t keycode, keyrecord_t *record) {
         && (get_mods() & MOD_MASK_SHIFT);
 }
 
+
 void activate_caps_lock() {
     printf("activating caps lock. current mods: %d\n", get_mods());
     caps_lock_pressed = true;
     tap_code(KC_CAPS);
 }
+
 
 void deactivate_caps_lock() {
     print("deactivating caps lock\n");
@@ -380,6 +408,7 @@ void deactivate_caps_lock() {
     tap_code(KC_CAPS);
 }
 
+
 #define COLEMAK_KEYMAP LAYOUT_split_3x5_3( \
     KC_Q,    KC_W,    KC_F,    KC_P,    KC_B,                               KC_J,    KC_L,    KC_U,    KC_Y,    KC_SCLN, \
     MC_A,    MC_R,    MC_S,    MC_T,    KC_G,                               KC_M,    MC_N,    MC_E,    MC_I,    MC_O, \
@@ -387,12 +416,14 @@ void deactivate_caps_lock() {
                                KC_DEL,  KC_BSPC, KC_ESC,           KC_SPC,  KC_ENT,  LS \
 )
 
+
 #define QWERTY_KEYMAP LAYOUT_split_3x5_3( \
     KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,                               KC_Y,    KC_U,    KC_I,    KC_O,    KC_P, \
     M_A,     M_S,     M_D,     M_F,     KC_G,                               KC_H,    M_J,     M_K,     M_L,     M_SCLN, \
     KC_SLSH, KC_Z,    KC_X,    KC_C,    KC_V,                               KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT, \
                                KC_DEL,  KC_BSPC, KC_ESC,           KC_SPC,  KC_ENT,  LS \
 )
+
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] =
 {

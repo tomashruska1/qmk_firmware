@@ -5,8 +5,6 @@
 #define SWITCH_TIMER 175
 #define TOP_LAYER 3
 
-#define DEFAULT_RGB_SPEED 100
-
 #define M_A LGUI_T(KC_A)
 #define M_S LALT_T(KC_S)
 #define M_D LSFT_T(KC_D)
@@ -38,6 +36,7 @@
 
 #define LAYER_BASED_BACKLIGHT
 // #define DYNAMIC_BASE_LAYER
+#define RED_LIGHT_NO_SPIRAL
 
 #ifdef DYNAMIC_BASE_LAYER
     #define BASE_LAYER_QWERTY 1
